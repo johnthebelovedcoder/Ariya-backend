@@ -1,87 +1,112 @@
 import { NextRequest } from 'next/server';
 import { EventService } from '@/lib/event-service';
-import { requireAuthApi, createApiResponse, createApiError } from '@/lib/api-utils';
+import { requireAuthApi, createApiResponse, handleApiError } from '@/lib/api-utils';
+import { CreateEventSchema } from '@/lib/validation-schemas';
+import { validateBody } from '@/middleware/validate-request';
+import { checkRateLimit } from '@/middleware/rate-limit-check';
+import { createRequestContext, logRequestEnd, logRequestError } from '@/middleware/request-context';
+import { parsePagination, createPaginatedResponse } from '@/lib/pagination-utils';
+import { ResponseBuilder } from '@/lib/response-builder';
+import Logger from '@/lib/logger-service';
 
-// GET /api/events - Get all events for authenticated user
+/**
+ * GET /api/v1/events
+ * Get all events for authenticated user with pagination
+ */
 export async function GET(request: NextRequest) {
-  const authResult = await requireAuthApi();
+  const context = createRequestContext(request);
   
+  const authResult = await requireAuthApi();
   if (!('session' in authResult)) {
-    return authResult; // Return error response
+    logRequestEnd(context, 401);
+    return authResult;
   }
   
   const { user } = authResult;
   
   try {
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    await checkRateLimit(request, 'api');
     
-    // Validate pagination parameters
-    if (page < 1 || limit < 1 || limit > 100) {
-      return createApiError('Invalid pagination parameters', 400);
-    }
+    const { searchParams } = new URL(request.url);
+    const { page, limit } = parsePagination(searchParams);
     
     const result = await EventService.getUserEvents(user.id, page, limit);
     
-    return createApiResponse(result, 'Events retrieved successfully');
+    const response = createPaginatedResponse(
+      result.events,
+      result.total,
+      page,
+      limit
+    );
+    
+    Logger.debug('Events retrieved', {
+      requestId: context.requestId,
+      userId: user.id,
+      count: result.events.length,
+      total: result.total
+    });
+    
+    logRequestEnd(context, 200, user.id);
+    return ResponseBuilder.paginated(response, 'Events retrieved successfully');
+    
   } catch (error: unknown) {
-    console.error('Error retrieving events:', error);
-    return createApiError('Failed to retrieve events', 500);
+    Logger.error('Failed to retrieve events', {
+      requestId: context.requestId,
+      userId: user.id,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+    
+    logRequestEnd(context, 500, user.id);
+    return handleApiError(error, 'GET /api/v1/events');
   }
 }
 
-// POST /api/events - Create a new event
+/**
+ * POST /api/v1/events
+ * Create a new event
+ */
 export async function POST(request: NextRequest) {
-  const authResult = await requireAuthApi();
+  const context = createRequestContext(request);
   
+  const authResult = await requireAuthApi();
   if (!('session' in authResult)) {
-    return authResult; // Return error response
+    logRequestEnd(context, 401);
+    return authResult;
   }
   
   const { user } = authResult;
   
   try {
-    const body = await request.json();
+    await checkRateLimit(request, 'api');
     
-    // Validate required fields
-    const requiredFields = ['name', 'type', 'date', 'location', 'budget'];
-    for (const field of requiredFields) {
-      if (!body[field]) {
-        return createApiError(`${field} is required`, 400);
-      }
-    }
-    
-    // Validate date format
-    const eventDate = new Date(body.date);
-    if (isNaN(eventDate.getTime())) {
-      return createApiError('Invalid date format', 400);
-    }
-    
-    // Validate numeric fields
-    if (typeof body.budget !== 'number' || body.budget < 0) {
-      return createApiError('Budget must be a positive number', 400);
-    }
-    
-    if (body.guestCount !== undefined && (typeof body.guestCount !== 'number' || body.guestCount < 0)) {
-      return createApiError('Guest count must be a non-negative number', 400);
-    }
+    const validated = await validateBody(request, CreateEventSchema);
     
     const event = await EventService.createEvent({
       userId: user.id,
-      name: body.name,
-      type: body.type,
-      date: eventDate,
-      location: body.location,
-      budget: body.budget,
-      guestCount: body.guestCount,
-      theme: body.theme,
-      notes: body.notes,
+      ...validated,
+      date: new Date(validated.date),
     });
     
-    return createApiResponse(event, 'Event created successfully', 201);
+    Logger.business('Event created', {
+      requestId: context.requestId,
+      userId: user.id,
+      eventId: event.id,
+      eventName: event.name,
+      budget: event.budget,
+      guestCount: event.guestCount
+    });
+    
+    logRequestEnd(context, 201, user.id);
+    return ResponseBuilder.created(event, 'Event created successfully');
+    
   } catch (error: unknown) {
-    console.error('Error creating event:', error);
-    return createApiError('Failed to create event', 500);
+    Logger.error('Failed to create event', {
+      requestId: context.requestId,
+      userId: user.id,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+    
+    logRequestEnd(context, 500, user.id);
+    return handleApiError(error, 'POST /api/v1/events');
   }
 }

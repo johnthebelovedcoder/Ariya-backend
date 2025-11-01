@@ -1,109 +1,163 @@
 import { NextRequest } from 'next/server';
 import { BookingService } from '@/lib/booking-service';
-import { requireAuthApi, createApiResponse, createApiError } from '@/lib/api-utils';
+import { requireAuthApi, createApiError, handleApiError } from '@/lib/api-utils';
+import { CreateBookingSchema } from '@/lib/validation-schemas';
+import { validateBody } from '@/middleware/validate-request';
+import { checkRateLimit } from '@/middleware/rate-limit-check';
+import { createRequestContext, logRequestEnd } from '@/middleware/request-context';
+import { parsePagination, createPaginatedResponse } from '@/lib/pagination-utils';
+import { ResponseBuilder } from '@/lib/response-builder';
+import Logger from '@/lib/logger-service';
 import { BookingStatus } from '@prisma/client';
 
-// GET /api/bookings - Get bookings based on query parameters
+/**
+ * GET /api/v1/bookings
+ * Get bookings for authenticated user (filtered by eventId or vendorId)
+ */
 export async function GET(request: NextRequest) {
-  const authResult = await requireAuthApi();
+  const context = createRequestContext(request);
   
+  const authResult = await requireAuthApi();
   if (!('session' in authResult)) {
-    return authResult; // Return error response
+    logRequestEnd(context, 401);
+    return authResult;
   }
   
   const { user } = authResult;
   
   try {
+    await checkRateLimit(request, 'api');
+    
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const { page, limit } = parsePagination(searchParams);
     const eventId = searchParams.get('eventId') || undefined;
     const vendorId = searchParams.get('vendorId') || undefined;
     const status = searchParams.get('status') as BookingStatus | undefined;
     
-    // Validate pagination parameters
-    if (page < 1 || limit < 1 || limit > 100) {
-      return createApiError('Invalid pagination parameters', 400);
-    }
-    
-    let result;
-    
-    if (eventId) {
-      // Get bookings for a specific event
-      result = await BookingService.getEventBookings(eventId, user.id, page, limit);
-    } else if (vendorId) {
-      // Get bookings for a specific vendor
-      result = await BookingService.getVendorBookings(vendorId, user.id, page, limit);
-    } else {
-      // Invalid parameters - need either eventId or vendorId
+    // Require either eventId or vendorId
+    if (!eventId && !vendorId) {
+      Logger.warn('Bookings request missing required parameters', {
+        requestId: context.requestId,
+        userId: user.id
+      });
+      logRequestEnd(context, 400, user.id);
       return createApiError('Either eventId or vendorId is required', 400);
     }
     
-    return createApiResponse(result, 'Bookings retrieved successfully');
+    let result;
+    if (eventId) {
+      result = await BookingService.getEventBookings(eventId, user.id, page, limit);
+    } else {
+      result = await BookingService.getVendorBookings(vendorId!, user.id, page, limit);
+    }
+    
+    const response = createPaginatedResponse(
+      result.bookings,
+      result.total,
+      page,
+      limit
+    );
+    
+    Logger.debug('Bookings retrieved', {
+      requestId: context.requestId,
+      userId: user.id,
+      eventId,
+      vendorId,
+      count: result.bookings.length
+    });
+    
+    logRequestEnd(context, 200, user.id);
+    return ResponseBuilder.paginated(response, 'Bookings retrieved successfully');
+    
   } catch (error: unknown) {
-    console.error('Error retrieving bookings:', error);
-    
-    if (error instanceof Error && error.message === 'Event not found or you do not have permission to access it') {
+    if (error instanceof Error && error.message.includes('not found or you do not have permission')) {
+      Logger.warn('Booking access denied', {
+        requestId: context.requestId,
+        userId: user.id,
+        error: error.message
+      });
+      logRequestEnd(context, 404, user.id);
       return createApiError(error.message, 404);
     }
     
-    if (error instanceof Error && error.message === 'Vendor not found or you do not have permission to access it') {
-      return createApiError(error.message, 404);
-    }
+    Logger.error('Failed to retrieve bookings', {
+      requestId: context.requestId,
+      userId: user.id,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
     
-    return createApiError('Failed to retrieve bookings', 500);
+    logRequestEnd(context, 500, user.id);
+    return handleApiError(error, 'GET /api/v1/bookings');
   }
 }
 
-// POST /api/bookings - Create a new booking
+/**
+ * POST /api/v1/bookings
+ * Create a new booking
+ */
 export async function POST(request: NextRequest) {
-  const authResult = await requireAuthApi();
+  const context = createRequestContext(request);
   
+  const authResult = await requireAuthApi();
   if (!('session' in authResult)) {
-    return authResult; // Return error response
+    logRequestEnd(context, 401);
+    return authResult;
   }
   
   const { user } = authResult;
   
   try {
-    const body = await request.json();
+    await checkRateLimit(request, 'api');
     
-    // Validate required fields
-    const requiredFields = ['eventId', 'vendorId', 'amount'];
-    for (const field of requiredFields) {
-      if (!body[field]) {
-        return createApiError(`${field} is required`, 400);
-      }
-    }
-    
-    // Validate numeric fields
-    if (typeof body.amount !== 'number' || body.amount < 0) {
-      return createApiError('Amount must be a positive number', 400);
-    }
+    const validated = await validateBody(request, CreateBookingSchema);
     
     const booking = await BookingService.createBooking({
-      eventId: body.eventId,
-      vendorId: body.vendorId,
-      amount: body.amount,
-      notes: body.notes,
+      eventId: validated.eventId,
+      vendorId: validated.vendorId,
+      amount: validated.amount,
+      notes: validated.notes,
     }, user.id);
     
-    return createApiResponse(booking, 'Booking created successfully', 201);
+    Logger.business('Booking created', {
+      requestId: context.requestId,
+      userId: user.id,
+      bookingId: booking.id,
+      eventId: validated.eventId,
+      vendorId: validated.vendorId,
+      amount: validated.amount
+    });
+    
+    logRequestEnd(context, 201, user.id);
+    return ResponseBuilder.created(booking, 'Booking created successfully');
+    
   } catch (error: unknown) {
-    console.error('Error creating booking:', error);
-    
-    if (error instanceof Error && error.message === 'Event not found or you do not have permission to book for it') {
+    if (error instanceof Error && error.message.includes('not found')) {
+      Logger.warn('Booking creation failed - resource not found', {
+        requestId: context.requestId,
+        userId: user.id,
+        error: error.message
+      });
+      logRequestEnd(context, 404, user.id);
       return createApiError(error.message, 404);
     }
     
-    if (error instanceof Error && error.message === 'Vendor not found') {
-      return createApiError(error.message, 404);
-    }
-    
-    if (error instanceof Error && error.message === 'Booking already exists for this event and vendor') {
+    if (error instanceof Error && error.message.includes('already exists')) {
+      Logger.warn('Booking creation failed - duplicate', {
+        requestId: context.requestId,
+        userId: user.id,
+        error: error.message
+      });
+      logRequestEnd(context, 409, user.id);
       return createApiError(error.message, 409);
     }
     
-    return createApiError('Failed to create booking', 500);
+    Logger.error('Failed to create booking', {
+      requestId: context.requestId,
+      userId: user.id,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+    
+    logRequestEnd(context, 500, user.id);
+    return handleApiError(error, 'POST /api/v1/bookings');
   }
 }

@@ -64,3 +64,19 @@ export const EMAIL = {
   FROM_NAME: process.env.EMAIL_FROM_NAME || 'Ariya Event Platform',
   MAX_RECIPIENTS: 10,
 } as const;
+
+// Payment Constants (Paystack)
+export const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || '';
+export const PAYSTACK_PUBLIC_KEY = process.env.PAYSTACK_PUBLIC_KEY || '';
+export const PAYMENT = {
+  PLATFORM_FEE_PERCENTAGE: 5, // 5% platform commission
+  ESCROW_RELEASE_DAYS: 7, // Days to hold payment in escrow
+  REFUND_WINDOW_DAYS: 14, // Days allowed for refunds
+  MIN_AMOUNT: 100, // Minimum payment amount in Naira
+  MAX_AMOUNT: 10000000, // Maximum payment amount in Naira (10M)
+  CURRENCY: 'NGN',
+  SUPPORTED_CHANNELS: ['card', 'bank', 'ussd', 'qr', 'mobile_money', 'bank_transfer'],
+} as const;
+
+// Frontend URL
+export const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';

@@ -1,92 +1,124 @@
 import { NextRequest } from 'next/server';
 import { VendorService } from '@/lib/vendor-service';
-import { requireAuthApi, createApiResponse, createApiError } from '@/lib/api-utils';
+import { requireAuthApi, handleApiError } from '@/lib/api-utils';
+import { VendorSearchSchema, CreateVendorSchema } from '@/lib/validation-schemas';
+import { validateBody, validateQuery } from '@/middleware/validate-request';
+import { checkRateLimit } from '@/middleware/rate-limit-check';
+import { createRequestContext, logRequestEnd } from '@/middleware/request-context';
+import { parsePagination, createPaginatedResponse } from '@/lib/pagination-utils';
+import { ResponseBuilder } from '@/lib/response-builder';
+import Logger from '@/lib/logger-service';
 
-// GET /api/vendors - Get all vendors with optional filtering
+/**
+ * GET /api/v1/vendors
+ * Get all vendors with optional filtering and search
+ */
 export async function GET(request: NextRequest) {
+  const context = createRequestContext(request);
+  
   try {
+    await checkRateLimit(request, 'api');
+    
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
-    const category = searchParams.get('category') || undefined;
-    const location = searchParams.get('location') || undefined;
-    const minRating = searchParams.get('minRating') ? parseFloat(searchParams.get('minRating')!) : undefined;
-    const searchTerm = searchParams.get('search') || undefined;
-
-    // Validate pagination parameters
-    if (page < 1 || limit < 1 || limit > 100) {
-      return createApiError('Invalid pagination parameters', 400);
-    }
-
+    const { page, limit } = parsePagination(searchParams);
+    
+    // Validate search/filter parameters
+    const filters = await validateQuery(request, VendorSearchSchema);
+    
     let result;
-    if (searchTerm) {
-      // Perform search if search term is provided
-      result = await VendorService.searchVendors(searchTerm, page, limit);
+    if (filters.search) {
+      result = await VendorService.searchVendors(filters.search, page, limit);
     } else {
-      // Get all vendors with filters
-      result = await VendorService.getAllVendors(page, limit, category, location, minRating);
+      result = await VendorService.getAllVendors(
+        page,
+        limit,
+        filters.category,
+        filters.location,
+        filters.minRating
+      );
     }
 
-    return createApiResponse(result, 'Vendors retrieved successfully');
+    const response = createPaginatedResponse(
+      result.vendors,
+      result.total,
+      page,
+      limit
+    );
+    
+    Logger.debug('Vendors retrieved', {
+      requestId: context.requestId,
+      count: result.vendors.length,
+      filters
+    });
+    
+    logRequestEnd(context, 200);
+    return ResponseBuilder.paginated(response, 'Vendors retrieved successfully');
+    
   } catch (error: any) {
-    console.error('Error retrieving vendors:', error);
-    return createApiError('Failed to retrieve vendors', 500);
+    Logger.error('Failed to retrieve vendors', {
+      requestId: context.requestId,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+    
+    logRequestEnd(context, 500);
+    return handleApiError(error, 'GET /api/v1/vendors');
   }
 }
 
-// POST /api/vendors - Create a new vendor profile
+/**
+ * POST /api/v1/vendors
+ * Create a new vendor profile
+ */
 export async function POST(request: NextRequest) {
-  const authResult = await requireAuthApi();
+  const context = createRequestContext(request);
   
+  const authResult = await requireAuthApi();
   if (!('session' in authResult)) {
-    return authResult; // Return error response
+    logRequestEnd(context, 401);
+    return authResult;
   }
   
   const { user } = authResult;
   
   try {
-    const body = await request.json();
+    await checkRateLimit(request, 'api');
     
-    // Validate required fields
-    const requiredFields = ['businessName', 'description', 'category', 'pricing', 'location'];
-    for (const field of requiredFields) {
-      if (!body[field]) {
-        return createApiError(`${field} is required`, 400);
-      }
-    }
-    
-    // Validate numeric fields
-    if (typeof body.pricing !== 'number' || body.pricing < 0) {
-      return createApiError('Pricing must be a positive number', 400);
-    }
-    
-    if (body.portfolio && !Array.isArray(body.portfolio)) {
-      return createApiError('Portfolio must be an array of image URLs', 400);
-    }
+    const validated = await validateBody(request, CreateVendorSchema);
     
     const vendor = await VendorService.createVendor({
       userId: user.id,
-      businessName: body.businessName,
-      description: body.description,
-      category: body.category,
-      pricing: body.pricing,
-      location: body.location,
-      portfolio: body.portfolio,
-      availability: body.availability,
+      ...validated,
     });
     
-    return createApiResponse(vendor, 'Vendor profile created successfully', 201);
-  } catch (error: any) {
-    console.error('Error creating vendor:', error);
+    Logger.business('Vendor profile created', {
+      requestId: context.requestId,
+      userId: user.id,
+      vendorId: vendor.id,
+      businessName: vendor.businessName,
+      category: vendor.category
+    });
     
+    logRequestEnd(context, 201, user.id);
+    return ResponseBuilder.created(vendor, 'Vendor profile created successfully');
+    
+  } catch (error: any) {
     if (error.message === 'Vendor profile already exists for this user') {
-      return createApiError(error.message, 409);
+      logRequestEnd(context, 409, user.id);
+      return handleApiError(error, 'POST /api/v1/vendors');
     }
     
     if (error.message === 'User not found') {
-      return createApiError(error.message, 404);
+      logRequestEnd(context, 404, user.id);
+      return handleApiError(error, 'POST /api/v1/vendors');
     }
     
-    return createApiError('Failed to create vendor profile', 500);
+    Logger.error('Failed to create vendor profile', {
+      requestId: context.requestId,
+      userId: user.id,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+    
+    logRequestEnd(context, 500, user.id);
+    return handleApiError(error, 'POST /api/v1/vendors');
   }
 }

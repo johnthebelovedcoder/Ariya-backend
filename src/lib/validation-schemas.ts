@@ -235,18 +235,120 @@ export const UpdateBudgetSchema = z.object({
 });
 
 // ============================================
+// Payment Schemas
+// ============================================
+
+export const InitializePaymentSchema = z.object({
+  bookingId: UUIDSchema,
+  amount: z.number().positive('Amount must be positive'),
+  currency: z.string().length(3).optional().default('NGN'),
+  email: EmailSchema,
+  callbackUrl: z.string().url().optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
+});
+
+export const VerifyPaymentSchema = z.object({
+  reference: z.string().min(1, 'Payment reference is required'),
+});
+
+export const RefundPaymentSchema = z.object({
+  reason: z.string().min(10, 'Refund reason must be at least 10 characters').max(500),
+  amount: z.number().positive().optional(), // Partial refund
+});
+
+// ============================================
 // Review Schemas
 // ============================================
 
 export const CreateReviewSchema = z.object({
+  bookingId: UUIDSchema,
   vendorId: UUIDSchema,
-  rating: z.number().int().min(1, 'Rating must be at least 1').max(5, 'Rating must be at most 5'),
-  comment: z.string().min(10, 'Comment must be at least 10 characters').max(1000).optional(),
+  rating: z.object({
+    overall: z.number().min(1).max(5),
+    quality: z.number().min(1).max(5).optional(),
+    communication: z.number().min(1).max(5).optional(),
+    punctuality: z.number().min(1).max(5).optional(),
+    value: z.number().min(1).max(5).optional(),
+  }),
+  review: z.string().min(10, 'Review must be at least 10 characters').max(2000),
+  photos: z.array(z.string().url()).max(5).optional(),
+  wouldRecommend: z.boolean().optional(),
+  tags: z.array(z.string()).max(10).optional(),
 });
 
 export const UpdateReviewSchema = z.object({
-  rating: z.number().int().min(1).max(5).optional(),
-  comment: z.string().min(10).max(1000).optional(),
+  rating: z.object({
+    overall: z.number().min(1).max(5).optional(),
+    quality: z.number().min(1).max(5).optional(),
+    communication: z.number().min(1).max(5).optional(),
+    punctuality: z.number().min(1).max(5).optional(),
+    value: z.number().min(1).max(5).optional(),
+  }).optional(),
+  review: z.string().min(10).max(2000).optional(),
+  photos: z.array(z.string().url()).max(5).optional(),
+});
+
+export const ReviewResponseSchema = z.object({
+  response: z.string().min(10, 'Response must be at least 10 characters').max(1000),
+});
+
+export const ReviewHelpfulSchema = z.object({
+  helpful: z.boolean(),
+});
+
+// ============================================
+// Notification Schemas
+// ============================================
+
+export const CreateNotificationSchema = z.object({
+  userId: UUIDSchema,
+  type: z.enum(['BOOKING', 'PAYMENT', 'MESSAGE', 'REVIEW', 'REMINDER', 'SYSTEM']),
+  title: z.string().min(1).max(200),
+  message: z.string().min(1).max(1000),
+  data: z.record(z.string(), z.any()).optional(),
+  actionUrl: z.string().url().optional(),
+});
+
+export const NotificationPreferencesSchema = z.object({
+  email: z.boolean().optional(),
+  push: z.boolean().optional(),
+  sms: z.boolean().optional(),
+  bookingUpdates: z.boolean().optional(),
+  paymentUpdates: z.boolean().optional(),
+  messages: z.boolean().optional(),
+  reviews: z.boolean().optional(),
+  reminders: z.boolean().optional(),
+  marketing: z.boolean().optional(),
+});
+
+// ============================================
+// Availability Schemas
+// ============================================
+
+export const SetAvailabilitySchema = z.object({
+  dates: z.record(
+    z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
+    z.object({
+      status: z.enum(['available', 'booked', 'blocked']),
+      slots: z.number().int().nonnegative().optional(),
+      notes: z.string().max(500).optional(),
+    })
+  ),
+  recurringRules: z.object({
+    weekdays: z.enum(['available', 'blocked', 'limited']).optional(),
+    weekends: z.enum(['available', 'blocked', 'limited']).optional(),
+    defaultSlots: z.number().int().positive().optional(),
+  }).optional(),
+});
+
+export const CheckAvailabilitySchema = z.object({
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
+});
+
+export const BulkAvailabilitySchema = z.object({
+  vendorIds: z.array(UUIDSchema).min(1).max(20),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
 });
 
 // ============================================
