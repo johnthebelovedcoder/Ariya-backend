@@ -1,5 +1,5 @@
-# Use the official Node.js 18 image as the base image
-FROM node:18-alpine AS base
+# Use the official Node.js 20 image as the base image
+FROM node:20-alpine AS base
 
 # Set the working directory
 WORKDIR /app
@@ -17,11 +17,11 @@ COPY . .
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 RUN npx prisma generate
 
-# Build the Next.js application
+# Build the NestJS application
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine AS production
+FROM node:20-alpine AS production
 
 # Set the working directory
 WORKDIR /app
@@ -31,10 +31,10 @@ COPY package*.json ./
 RUN npm ci --only=production --no-optional
 
 # Copy the built application from the base stage
-COPY --from=base /app/public ./public
-COPY --from=base /app/.next/standalone ./
-COPY --from=base /app/.next/static ./.next/static
+COPY --from=base /app/dist ./dist
 COPY --from=base /app/node_modules ./node_modules
+COPY --from=base /app/package*.json ./
+COPY --from=base /app/prisma ./prisma
 
 # Expose the port the app runs on
 EXPOSE 3000
@@ -43,4 +43,4 @@ EXPOSE 3000
 ENV NODE_ENV=production
 
 # Start the application
-CMD ["node", "server.js"]
+CMD ["npm", "run", "start:prod"]
