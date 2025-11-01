@@ -7,10 +7,37 @@ A comprehensive event planning platform backend built with Next.js, TypeScript, 
 - **API Versioning**: All API endpoints are versioned under `/api/v1/`
 - **Authentication**: Next-Auth with JWT tokens
 - **Database**: PostgreSQL with Prisma ORM
+- **Rate Limiting**: Built-in rate limiting with Redis support
 - **Validation**: Comprehensive DTO validation and input sanitization
-- **Security**: Rate limiting, CORS protection, and input sanitization
+- **Security**: CORS protection, and input sanitization
 - **Logging**: Structured logging system with different log levels
 - **Deployment**: Docker support for easy deployment
+
+## Rate Limiting
+
+A production-ready rate limiting solution is included with support for both Redis and in-memory storage. For detailed documentation, see [RATE_LIMIT.md](./RATE_LIMIT.md).
+
+### Quick Start
+
+1. **Basic Usage**:
+   ```typescript
+   import { withRateLimit } from '@/middleware/rate-limit';
+   
+   export const GET = withRateLimit('api', async (request) => {
+     return NextResponse.json({ data: 'Success' });
+   });
+   ```
+
+2. **Configure in `.env`**:
+   ```env
+   # Redis (optional)
+   REDIS_URL=redis://localhost:6379
+   
+   # Rate Limits (requests per window)
+   RATE_LIMIT_AUTH=5/15m      # 5 requests per 15 minutes
+   RATE_LIMIT_API=100/1h      # 100 requests per hour
+   RATE_LIMIT_UPLOAD=10/1h    # 10 uploads per hour
+   ```
 
 ## Getting Started
 
