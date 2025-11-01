@@ -1,0 +1,557 @@
+// This is your Prisma schema file
+// https://www.prisma.io/docs/concepts/components/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  output         = "../node_modules/.prisma/client"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  extensions = [pg_trgm, pgcrypto, uuid_ossp]
+}
+
+enum UserRole {
+  PLANNER
+  VENDOR
+  ADMIN
+}
+
+enum SubscriptionTier {
+  BASIC
+  PREMIUM
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum RSVPStatus {
+  YES
+  NO
+  MAYBE
+}
+
+enum SubscriptionPlan {
+  FREE
+  PRO
+  PREMIUM
+}
+
+enum SubscriptionInterval {
+  MONTHLY
+  YEARLY
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  CANCELLED
+  EXPIRED
+}
+
+model User {
+  id                String    @id @default(uuid())
+  name              String
+  email             String    @unique
+  emailVerified     DateTime?
+  password          String
+  role              UserRole  @default(PLANNER)
+  profileImage      String?
+  phone             String?
+  socialLoginProvider String?
+  country           String?   // User's selected country
+  currency          String?   // User's selected currency (e.g., 'NGN', 'USD', 'EUR', 'GBP')
+  timezone          String?   @default("Africa/Lagos") // Default timezone
+  preferredLocale   String?   @default("en-NG")        // Default locale
+  
+  // Authentication & Security fields
+  isVerified        Boolean   @default(false)
+  isSuspended       Boolean   @default(false)
+  failedLoginAttempts Int     @default(0)
+  lockoutUntil      DateTime?
+  tokenVersion      Int       @default(0)
+  lastLoginAt       DateTime?
+  passwordChangedAt DateTime?
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relations
+  vendor           Vendor?
+  events           Event[]
+  reviews          Review[]
+  subscriptions    Subscription[]
+  sentMessages     Message[]  @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+  reportedReports  ModerationReport[] @relation("ReportedReports")
+  reportedUserReports ModerationReport[] @relation("ReportedUserReports")
+  userWarnings     UserWarning[]
+  userRestrictions UserRestriction[]
+  removedRestrictions UserRestriction[] @relation("RemovedByRestrictions")
+  verificationTokens VerificationToken[]
+  
+  @@index([email])
+  @@index([role])
+  @@index([country])
+  @@index([currency])
+  @@index([isVerified])
+  @@index([isSuspended])
+  @@index([tokenVersion])
+}
+
+model UserWarning {
+  id           String    @id @default(uuid())
+  userId       String
+  reason       String
+  issuedBy     String    // Could be 'AUTOMATED_SYSTEM' or moderator ID
+  isAutomated  Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+
+  // Relations
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Vendor {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  businessName    String
+  description     String
+  category        String
+  pricing         Float
+  location        String
+  portfolio       String[]
+  availability    Json?
+  ratingAverage   Float    @default(0)
+  totalReviews    Int      @default(0)
+  subscriptionTier SubscriptionTier @default(BASIC)
+  isVerified      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookings       Booking[]
+  reviews        Review[]
+  vendorSubscriptions VendorSubscription[]
+  featuredListings FeaturedListing[]
+  vendorInsightPackages VendorInsightPackage[]
+  
+  @@index([userId])
+}
+
+model Event {
+  id             String    @id @default(uuid())
+  userId         String
+  name           String
+  type           String
+  date           DateTime
+  location       String
+  budget         Float
+  status         String    @default("DRAFT")
+  guestCount     Int       @default(0)
+  theme          String?
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  
+  // Relations
+  user           User      @relation(fields: [userId], references: [id])
+  guests         Guest[]
+  budgets        Budget[]
+  bookings       Booking[]
+  registry       Registry?
+  seating        Seating?
+  eventWebsiteUpgrades EventWebsiteUpgrade[]
+  aiRecommendations AIRecommendation[]
+  
+  @@index([userId])
+}
+
+model Guest {
+  id                  String    @id @default(uuid())
+  eventId             String
+  name                String
+  email               String
+  rsvp                RSVPStatus @default(MAYBE)
+  dietaryRestrictions String?
+  seatNumber          String?
+  invitedBy           String
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  
+  // Relations
+  event             Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  @@index([eventId])
+}
+
+model Budget {
+  id              String    @id @default(uuid())
+  eventId         String
+  category        String
+  allocated       Float
+  actual          Float     @default(0)
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relations
+  event           Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  @@index([eventId])
+}
+
+model Seating {
+  id              String    @id @default(uuid())
+  eventId         String    @unique
+  layout          Json
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relations
+  event           Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+model Registry {
+  id                        String    @id @default(uuid())
+  eventId                   String    @unique
+  type                      String
+  externalLinks             Json
+  thankYouNotes             Json?
+  premiumCustomization      Boolean   @default(false)
+  premiumCustomizationFeePaid Boolean?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+  
+  // Relations
+  event                     Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+model Booking {
+  id              String    @id @default(uuid())
+  eventId         String
+  vendorId        String
+  status          BookingStatus @default(PENDING)
+  amount          Float     // Original booking amount before commissions
+  currency        String    @default("NGN") // Currency of the booking
+  customerTotal   Float?    // Total amount customer pays (including service fee)
+  vendorNet       Float?    // Amount vendor receives after commission
+  ariyaRevenue    Float?    // Ariya's revenue from this booking
+  paymentStatus   PaymentStatus @default(PENDING)
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relations
+  event           Event     @relation(fields: [eventId], references: [id])
+  vendor          Vendor    @relation(fields: [vendorId], references: [id])
+  payment         Payment?
+  
+  @@index([eventId])
+  @@index([vendorId])
+  @@index([status])
+  @@index([currency])
+  @@index([eventId, status])
+  @@index([vendorId, status])
+  @@index([createdAt, status])
+}
+
+model Payment {
+  id                    String    @id @default(uuid())
+  type                  String    @default("BOOKING") // 'BOOKING', 'SUBSCRIPTION', 'FEATURED_LISTING', 'EVENT_WEBSITE_UPGRADE', 'VENDOR_INSIGHT_PACKAGE', 'REGISTRY_ITEM'
+  bookingId             String?   @unique
+  transactionId         String
+  amount                Float     // Amount paid by customer (in the specified currency)
+  currency              String    @default("NGN")     // Currency code (e.g., 'NGN', 'USD', 'EUR', 'GBP')
+  paymentMethod         String    // Payment method identifier
+  status                PaymentStatus @default(PENDING)
+  timestamp             DateTime  @default(now())
+  subscriptionId        String?   @unique
+  vendorSubscriptionId  String?   @unique
+  featuredListingId     String?   @unique
+  eventWebsiteUpgradeId String?   @unique
+  vendorInsightPackageId String?  @unique
+  exchangeRate          Float?    // Exchange rate if converted from user's currency to system currency
+  originalAmount        Float?    // Original amount in user's currency
+  
+  // Relations
+  booking         Booking?   @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  subscription    Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  vendorSubscription VendorSubscription? @relation(fields: [vendorSubscriptionId], references: [id], onDelete: SetNull)
+  featuredListing FeaturedListing? @relation(fields: [featuredListingId], references: [id], onDelete: SetNull)
+  eventWebsiteUpgrade EventWebsiteUpgrade? @relation(fields: [eventWebsiteUpgradeId], references: [id], onDelete: SetNull)
+  vendorInsightPackage VendorInsightPackage? @relation(fields: [vendorInsightPackageId], references: [id], onDelete: SetNull)
+  
+  @@index([bookingId])
+  @@index([subscriptionId])
+  @@index([vendorSubscriptionId])
+  @@index([featuredListingId])
+  @@index([eventWebsiteUpgradeId])
+  @@index([vendorInsightPackageId])
+  @@index([type])
+  @@index([currency])
+}
+
+model Message {
+  id              String    @id @default(uuid())
+  senderId        String
+  receiverId      String
+  content         String
+  isRead          Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  
+  // Relations
+  sender          User      @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver        User      @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  moderationReports ModerationReport[]  // One message can be reported multiple times
+  
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([createdAt])
+  @@index([senderId, receiverId, createdAt])
+  @@index([isRead, receiverId])
+}
+
+model Review {
+  id              String    @id @default(uuid())
+  vendorId        String
+  userId          String
+  rating          Int       @default(5)
+  comment         String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relations
+  vendor          Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([vendorId])
+  @@index([userId])
+}
+
+model AIRecommendation {
+  id              String    @id @default(uuid())
+  eventId         String
+  recommendations Json
+  feedback        String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relations
+  event           Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  @@index([eventId])
+}
+
+model ModerationReport {
+  id               String            @id @default(uuid())
+  reporterId       String
+  reportedUserId   String
+  contentId        String?           // ID of the content being reported (message, vendor, etc.)
+  contentType      String?           // Type of content ('message', 'profile', 'vendor', etc.)
+  reason           String
+  flaggedKeywords  String[]          // For automated reports
+  severity         String?           // 'LOW', 'MEDIUM', 'HIGH' (for automated reports)
+  status           String            @default("PENDING_REVIEW") // 'PENDING_REVIEW', 'IN_REVIEW', 'RESOLVED'
+  resolutionNotes  String?
+  reviewedBy       String?           // ID of the moderator who reviewed
+  reviewedAt       DateTime?
+  isAutomated      Boolean           @default(false) // Whether this was an automated or user report
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  // Relations
+  reporter         User              @relation("ReportedReports", fields: [reporterId], references: [id])
+  reportedUser     User              @relation("ReportedUserReports", fields: [reportedUserId], references: [id])
+  message          Message?          @relation(fields: [contentId], references: [id], onDelete: SetNull)
+  
+  @@index([createdAt])
+  @@index([status])
+  @@index([reporterId])
+  @@index([reportedUserId])
+}
+
+model UserRestriction {
+  id              String    @id @default(uuid())
+  userId          String
+  type            String    // 'MESSAGING_RESTRICTION', 'ACCOUNT_SUSPENSION', 'FEATURE_LOCK'
+  reason          String
+  expiresAt       DateTime?
+  isActive        Boolean   @default(true)
+  removedBy       String?   // ID of admin who removed the restriction
+  removedAt       DateTime?
+  removalReason   String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  removedByUser   User?     @relation("RemovedByRestrictions", fields: [removedBy], references: [id], onDelete: SetNull)
+  
+  @@index([userId])
+  @@index([isActive])
+  @@index([expiresAt])
+}
+
+model Subscription {
+  id                    String            @id @default(uuid())
+  userId                String
+  plan                  SubscriptionPlan
+  interval              SubscriptionInterval
+  status                SubscriptionStatus
+  amount                Float
+  currency              String            @default("NGN")
+  startDate             DateTime
+  endDate               DateTime
+  isAutoRenew           Boolean           @default(true)
+  paymentMethodId       String?
+  paymentStatus         String            @default("PENDING")
+  stripeSubscriptionId  String?           // For Stripe integration
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  // Relations
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment               Payment?
+  
+  @@index([userId])
+  @@index([status])
+  @@index([endDate])
+  @@index([currency])
+}
+
+model VendorSubscription {
+  id                    String            @id @default(uuid())
+  vendorId              String
+  plan                  SubscriptionPlan
+  interval              SubscriptionInterval
+  status                SubscriptionStatus
+  amount                Float
+  currency              String            @default("NGN")
+  startDate             DateTime
+  endDate               DateTime
+  isAutoRenew           Boolean           @default(true)
+  paymentMethodId       String?
+  paymentStatus         String            @default("PENDING")
+  stripeSubscriptionId  String?           // For Stripe integration
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  // Relations
+  vendor                Vendor            @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  payment               Payment?
+  
+  @@index([vendorId])
+  @@index([status])
+  @@index([endDate])
+  @@index([currency])
+}
+
+model FeaturedListing {
+  id              String            @id @default(uuid())
+  vendorId        String
+  type            String            // 'CATEGORY_TOP_SPOT', 'SEARCH_RESULT_BOOST'
+  amount          Float
+  currency        String            @default("NGN")
+  startDate       DateTime
+  endDate         DateTime
+  status          String            @default("ACTIVE")
+  paymentStatus   String            @default("PENDING")
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  vendor          Vendor            @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  payment         Payment?
+  
+  @@index([vendorId])
+  @@index([status])
+  @@index([endDate])
+  @@index([currency])
+}
+
+model EventWebsiteUpgrade {
+  id              String            @id @default(uuid())
+  eventId         String
+  type            String            // 'CUSTOM_DOMAIN', 'PREMIUM_TEMPLATE', 'ADDITIONAL_STORAGE'
+  amount          Float
+  currency        String            @default("NGN")
+  status          String            @default("PENDING")
+  paymentStatus   String            @default("PENDING")
+  details         Json?             // Additional details specific to upgrade type
+  purchasedAt     DateTime          @default(now())
+  expiresAt       DateTime?
+
+  // Relations
+  event           Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  payment         Payment?
+  
+  @@index([eventId])
+  @@index([status])
+  @@index([currency])
+}
+
+model VendorInsightPackage {
+  id              String            @id @default(uuid())
+  vendorId        String
+  type            String            // 'BASIC', 'PREMIUM', 'CUSTOM_REPORT'
+  amount          Float
+  currency        String            @default("NGN")
+  status          String            @default("PENDING")
+  paymentStatus   String            @default("PENDING")
+  purchasedAt     DateTime          @default(now())
+  expiresAt       DateTime?
+  details         Json?             // Additional details about the insights package
+
+  // Relations
+  vendor          Vendor            @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  payment         Payment?
+  
+  @@index([vendorId])
+  @@index([status])
+  @@index([currency])
+}
+
+model VerificationToken {
+  id          String   @id @default(uuid())
+  userId      String
+  token       String   @unique
+  type        String   // 'EMAIL_VERIFICATION', 'PASSWORD_RESET'
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@index([type])
+}
+
+model IdempotencyKey {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  result      Json?
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  
+  @@index([key])
+  @@index([expiresAt])
+}

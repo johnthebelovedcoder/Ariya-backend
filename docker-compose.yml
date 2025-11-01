@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      target: production
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://ariya_user:ariya_password@db:5432/ariya_db
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=your-super-secret-nextauth-key-here
+      - JWT_SECRET=your-super-secret-jwt-key-here
+      - JWT_REFRESH_SECRET=your-super-secret-jwt-refresh-key-here
+    depends_on:
+      - db
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs  # For log files
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ariya_db
+      POSTGRES_USER: ariya_user
+      POSTGRES_PASSWORD: ariya_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql  # Optional: initial data
+    restart: unless-stopped
+
+  # Optional: Redis for production rate limiting and caching
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,2130 @@
+openapi: 3.0.0
+info:
+  title: Ariya Backend API
+  description: API documentation for the Ariya event planning platform
+  version: 1.0.0
+servers:
+  - url: /api
+    description: Base API URL
+paths:
+  /auth/[...nextauth]:
+    post:
+      summary: NextAuth.js authentication
+      description: NextAuth.js default authentication endpoint
+      responses:
+        '200':
+          description: Successful authentication response
+  /auth/register:
+    post:
+      summary: User registration
+      description: Register a new user with first name and last name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - firstName
+                - lastName
+                - email
+                - password
+                - confirmPassword
+                - role
+              properties:
+                firstName:
+                  type: string
+                  description: User's first name
+                lastName:
+                  type: string
+                  description: User's last name
+                email:
+                  type: string
+                  format: email
+                  description: User's email
+                password:
+                  type: string
+                  format: password
+                  description: User's password
+                confirmPassword:
+                  type: string
+                  format: password
+                  description: Confirmation of user's password
+                role:
+                  type: string
+                  enum: [PLANNER, VENDOR]
+                  description: User's role
+                businessName:
+                  type: string
+                  description: Business name (for vendors)
+                category:
+                  type: string
+                  description: Vendor category (for vendors)
+                location:
+                  type: string
+                  description: Vendor location (for vendors)
+                phone:
+                  type: string
+                  description: User's phone number
+                country:
+                  type: string
+                  description: User's country
+                currency:
+                  type: string
+                  description: User's currency preference
+      responses:
+        '201':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /profile:
+    get:
+      summary: Get user profile
+      description: Get current user's profile with separate first and last name
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: User profile retrieved successfully
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: "user123"
+                      firstName:
+                        type: string
+                        example: "John"
+                      lastName:
+                        type: string
+                        example: "Doe"
+                      name:
+                        type: string
+                        example: "John Doe"
+                      email:
+                        type: string
+                        format: email
+                        example: "john.doe@example.com"
+                      role:
+                        type: string
+                        example: "PLANNER"
+                      profileImage:
+                        type: string
+                        example: "https://example.com/image.jpg"
+                      phone:
+                        type: string
+                        example: "+1234567890"
+                      country:
+                        type: string
+                        example: "US"
+                      currency:
+                        type: string
+                        example: "USD"
+                      createdAt:
+                        type: string
+                        format: date-time
+                        example: "2023-01-01T00:00:00Z"
+                      updatedAt:
+                        type: string
+                        format: date-time
+                        example: "2023-01-01T00:00:00Z"
+    put:
+      summary: Update user profile
+      description: Update current user's profile with separate first and last name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - firstName
+                - lastName
+              properties:
+                firstName:
+                  type: string
+                  description: User's first name
+                lastName:
+                  type: string
+                  description: User's last name
+                email:
+                  type: string
+                  format: email
+                  description: User's email
+                phone:
+                  type: string
+                  description: User's phone number
+                profileImage:
+                  type: string
+                  format: uri
+                  description: URL to profile image
+      responses:
+        '200':
+          description: User profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: User profile updated successfully
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: "user123"
+                      firstName:
+                        type: string
+                        example: "John"
+                      lastName:
+                        type: string
+                        example: "Doe"
+                      name:
+                        type: string
+                        example: "John Doe"
+                      email:
+                        type: string
+                        format: email
+                        example: "john.doe@example.com"
+                      role:
+                        type: string
+                        example: "PLANNER"
+                      profileImage:
+                        type: string
+                        example: "https://example.com/image.jpg"
+                      phone:
+                        type: string
+                        example: "+1234567890"
+                      updatedAt:
+                        type: string
+                        format: date-time
+                        example: "2023-01-01T00:00:00Z"
+  /location:
+    get:
+      summary: Get location information
+      description: Get countries, or states for a specific country
+      parameters:
+        - name: country
+          in: query
+          description: Filter by country code to get states
+          required: false
+          schema:
+            type: string
+            example: "US"
+      responses:
+        '200':
+          description: Location information retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Countries retrieved successfully
+                  data:
+                    type: object
+                    properties:
+                      countries:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            code:
+                              type: string
+                              example: "US"
+                            name:
+                              type: string
+                              example: "United States"
+                      states:
+                        type: array
+                        items:
+                          type: string
+                          example: "California"
+    post:
+      summary: Get cities for country and state
+      description: Get cities for a specific country and state
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - country
+                - state
+              properties:
+                country:
+                  type: string
+                  description: Country code
+                  example: "US"
+                state:
+                  type: string
+                  description: State name
+                  example: "California"
+      responses:
+        '200':
+          description: Cities retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Cities retrieved successfully
+                  data:
+                    type: object
+                    properties:
+                      cities:
+                        type: array
+                        items:
+                          type: string
+                          example: "Los Angeles"
+  /upload/selfie:
+    post:
+      summary: Upload selfie image
+      description: Upload a selfie image for the user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - imageUrl
+              properties:
+                imageUrl:
+                  type: string
+                  format: uri
+                  description: URL to the selfie image
+      responses:
+        '200':
+          description: Selfie uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Selfie uploaded successfully
+                  data:
+                    type: object
+                    properties:
+                      selfieUrl:
+                        type: string
+                        format: uri
+                        example: "https://example.com/selfie.jpg"
+                      updatedAt:
+                        type: string
+                        format: date-time
+                        example: "2023-01-01T00:00:00Z"
+  /onboarding:
+    post:
+      summary: Handle onboarding flow
+      description: Handle onboarding flow for vendors and planners
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - flowType
+                - step
+              properties:
+                flowType:
+                  type: string
+                  enum: [vendor, planner]
+                  description: Type of onboarding flow
+                step:
+                  type: string
+                  description: Current step in the onboarding flow
+                # Vendor onboarding fields
+                businessName:
+                  type: string
+                  description: Business name for vendor
+                category:
+                  type: string
+                  description: Vendor category
+                description:
+                  type: string
+                  description: Business description
+                pricing:
+                  type: number
+                  description: Pricing information
+                country:
+                  type: string
+                  description: Country
+                state:
+                  type: string
+                  description: State
+                city:
+                  type: string
+                  description: City
+                selfieUrl:
+                  type: string
+                  format: uri
+                  description: URL to selfie image
+                logoUrl:
+                  type: string
+                  format: uri
+                  description: URL to logo image
+                portfolio:
+                  type: array
+                  items:
+                    type: string
+                    format: uri
+                  description: Portfolio images
+                # Planner onboarding fields
+                eventType:
+                  type: string
+                  description: Type of event
+                eventDate:
+                  type: string
+                  format: date
+                  description: Event date
+                eventTiming:
+                  type: string
+                  description: Event timing option
+                eventId:
+                  type: string
+                  description: Event ID
+                budget:
+                  type: number
+                  description: Event budget
+                guestCount:
+                  type: number
+                  description: Number of guests
+                services:
+                  type: array
+                  items:
+                    type: string
+                  description: Services needed
+                style:
+                  type: string
+                  description: Event style/theme
+      responses:
+        '200':
+          description: Onboarding step completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Business information saved successfully
+                  data:
+                    type: object
+                    # Response structure varies by step
+  /users:
+    get:
+      summary: Get all users
+      description: Get all users with optional filtering (Admin role required)
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination (default: 1)
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: Number of results per page (default: 10, max: 100)
+          required: false
+          schema:
+            type: integer
+            default: 10
+            maximum: 100
+        - name: role
+          in: query
+          description: Filter by user role (PLANNER, VENDOR, ADMIN)
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+      security:
+        - bearerAuth: []
+    post:
+      summary: Create a new user
+      description: Create a new user (Public endpoint)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '200':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Bad request - invalid input data
+  /users/{id}:
+    get:
+      summary: Get a specific user
+      description: Get a specific user by ID (Requires authenticated user or Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetUserResponse'
+      security:
+        - bearerAuth: []
+    put:
+      summary: Update a user
+      description: Update a specific user (Requires authenticated user or Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+      security:
+        - bearerAuth: []
+    delete:
+      summary: Delete a user
+      description: Delete a specific user (Requires authenticated user or Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+      security:
+        - bearerAuth: []
+  /events:
+    get:
+      summary: Get all events
+      description: Get all events for the authenticated user
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination (default: 1)
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: Number of results per page (default: 10, max: 100)
+          required: false
+          schema:
+            type: integer
+            default: 10
+            maximum: 100
+      responses:
+        '200':
+          description: List of events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventListResponse'
+      security:
+        - bearerAuth: []
+    post:
+      summary: Create a new event
+      description: Create a new event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEventRequest'
+      responses:
+        '200':
+          description: Event created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+      security:
+        - bearerAuth: []
+  /events/{id}:
+    get:
+      summary: Get a specific event
+      description: Get a specific event by ID (Requires authenticated user - event owner)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Event ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Event details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetEventResponse'
+      security:
+        - bearerAuth: []
+    put:
+      summary: Update an event
+      description: Update a specific event (Requires authenticated user - event owner)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Event ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEventRequest'
+      responses:
+        '200':
+          description: Event updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+      security:
+        - bearerAuth: []
+    delete:
+      summary: Delete an event
+      description: Delete a specific event (Requires authenticated user - event owner)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Event ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Event deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+      security:
+        - bearerAuth: []
+  /vendors:
+    get:
+      summary: Get all vendors
+      description: Get all vendors with optional filtering (Public endpoint)
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination (default: 1)
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: Number of results per page (default: 10, max: 100)
+          required: false
+          schema:
+            type: integer
+            default: 10
+            maximum: 100
+        - name: category
+          in: query
+          description: Filter by vendor category
+          required: false
+          schema:
+            type: string
+        - name: location
+          in: query
+          description: Filter by vendor location
+          required: false
+          schema:
+            type: string
+        - name: minRating
+          in: query
+          description: Filter by minimum rating
+          required: false
+          schema:
+            type: number
+        - name: search
+          in: query
+          description: Search term for name, description, category, or location
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of vendors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VendorListResponse'
+    post:
+      summary: Create a new vendor
+      description: Create a new vendor profile (Requires authenticated user with VENDOR role)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVendorRequest'
+      responses:
+        '200':
+          description: Vendor created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+      security:
+        - bearerAuth: []
+  /vendors/{id}:
+    get:
+      summary: Get a specific vendor
+      description: Get a specific vendor by ID (Public endpoint)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Vendor ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Vendor details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetVendorResponse'
+    put:
+      summary: Update a vendor
+      description: Update a specific vendor (Requires authenticated user - vendor owner or Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Vendor ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateVendorRequest'
+      responses:
+        '200':
+          description: Vendor updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+      security:
+        - bearerAuth: []
+    delete:
+      summary: Delete a vendor
+      description: Delete a specific vendor (Requires authenticated user - vendor owner or Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Vendor ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Vendor deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+      security:
+        - bearerAuth: []
+  /bookings:
+    get:
+      summary: Get bookings
+      description: Get bookings for an event or vendor (Requires authenticated user - event owner or vendor)
+      parameters:
+        - name: eventId
+          in: query
+          description: Event ID to get bookings for (required if not vendorId)
+          required: false
+          schema:
+            type: string
+        - name: vendorId
+          in: query
+          description: Vendor ID to get bookings for (required if not eventId)
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number for pagination (default: 1)
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: Number of results per page (default: 10, max: 100)
+          required: false
+          schema:
+            type: integer
+            default: 10
+            maximum: 100
+        - name: status
+          in: query
+          description: Filter by booking status
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of bookings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingListResponse'
+      security:
+        - bearerAuth: []
+    post:
+      summary: Create a new booking
+      description: Create a new booking (Requires authenticated user - event owner)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookingRequest'
+      responses:
+        '200':
+          description: Booking created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+      security:
+        - bearerAuth: []
+  /bookings/{id}:
+    get:
+      summary: Get a specific booking
+      description: Get a specific booking by ID (Requires authenticated user - event owner or booking vendor)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Booking ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Booking details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetBookingResponse'
+      security:
+        - bearerAuth: []
+    put:
+      summary: Update a booking
+      description: Update a specific booking (Requires authenticated user - event owner or booking vendor)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Booking ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBookingRequest'
+      responses:
+        '200':
+          description: Booking updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+      security:
+        - bearerAuth: []
+    delete:
+      summary: Delete a booking
+      description: Delete a specific booking (Requires authenticated user - event owner)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Booking ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Booking deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+      security:
+        - bearerAuth: []
+  /guests:
+    get:
+      summary: Get all guests
+      description: Get all guests for an event (Requires authenticated user - event owner)
+      parameters:
+        - name: eventId
+          in: query
+          description: Event ID to get guests for
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number for pagination (default: 1)
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: Number of results per page (default: 10, max: 100)
+          required: false
+          schema:
+            type: integer
+            default: 10
+            maximum: 100
+      responses:
+        '200':
+          description: List of guests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GuestListResponse'
+      security:
+        - bearerAuth: []
+    post:
+      summary: Add a new guest
+      description: Add a new guest to an event (Requires authenticated user - event owner)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGuestRequest'
+      responses:
+        '200':
+          description: Guest added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+      security:
+        - bearerAuth: []
+  /guests/{id}:
+    get:
+      summary: Get a specific guest
+      description: Get a specific guest by ID (Requires authenticated user - event owner)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Guest ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Guest details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetGuestResponse'
+      security:
+        - bearerAuth: []
+    put:
+      summary: Update a guest
+      description: Update a specific guest (Requires authenticated user - event owner)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Guest ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateGuestRequest'
+      responses:
+        '200':
+          description: Guest updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+      security:
+        - bearerAuth: []
+    delete:
+      summary: Delete a guest
+      description: Delete a specific guest (Requires authenticated user - event owner)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Guest ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Guest deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+      security:
+        - bearerAuth: []
+  /ai/recommendations:
+    get:
+      summary: Get AI recommendations
+      description: Get AI recommendations for an event (Requires authenticated user - event owner)
+      parameters:
+        - name: eventId
+          in: query
+          description: Event ID to get recommendations for
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: AI recommendations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIRecommendationListResponse'
+      security:
+        - bearerAuth: []
+    post:
+      summary: Generate AI recommendations
+      description: Generate or create AI recommendations for an event (Requires authenticated user - event owner)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAIRecommendationRequest'
+      responses:
+        '200':
+          description: Recommendations generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+      security:
+        - bearerAuth: []
+  /ai/recommendations/{id}:
+    get:
+      summary: Get a specific AI recommendation
+      description: Get a specific AI recommendation by ID (Requires authenticated user - event owner)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Recommendation ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: AI recommendation details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetAIRecommendationResponse'
+      security:
+        - bearerAuth: []
+    put:
+      summary: Update an AI recommendation
+      description: Update a specific AI recommendation (Requires authenticated user - event owner)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Recommendation ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAIRecommendationRequest'
+      responses:
+        '200':
+          description: Recommendation updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+      security:
+        - bearerAuth: []
+    delete:
+      summary: Delete an AI recommendation
+      description: Delete a specific AI recommendation (Requires authenticated user - event owner)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Recommendation ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Recommendation deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+      security:
+        - bearerAuth: []
+  /moderation/report:
+    post:
+      summary: Submit a moderation report
+      description: Submit a report for inappropriate content (Requires authenticated user)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateModerationReportRequest'
+      responses:
+        '200':
+          description: Report submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+      security:
+        - bearerAuth: []
+  /moderation/reports:
+    get:
+      summary: Get moderation reports
+      description: Get moderation reports for review (Admin role required)
+      parameters:
+        - name: status
+          in: query
+          description: Status of reports to retrieve (PENDING_REVIEW, IN_REVIEW, RESOLVED) (default: PENDING_REVIEW)
+          required: false
+          schema:
+            type: string
+            default: PENDING_REVIEW
+        - name: page
+          in: query
+          description: Page number for pagination (default: 1)
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: Number of results per page (default: 10, max: 100)
+          required: false
+          schema:
+            type: integer
+            default: 10
+            maximum: 100
+      responses:
+        '200':
+          description: List of moderation reports
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModerationReportListResponse'
+      security:
+        - bearerAuth: []
+  /moderation/reports/{id}:
+    put:
+      summary: Update a moderation report
+      description: Update status of a moderation report (Admin role required)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Report ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateModerationReportRequest'
+      responses:
+        '200':
+          description: Report updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+      security:
+        - bearerAuth: []
+  /moderation/restrictions:
+    get:
+      summary: Get user restrictions
+      description: Get current user's restrictions and permissions
+      responses:
+        '200':
+          description: User restrictions and permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRestrictionsResponse'
+      security:
+        - bearerAuth: []
+  /moderation/action-check:
+    post:
+      summary: Check if user can perform an action
+      description: Check if user can perform a specific action (Requires authenticated user)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActionCheckRequest'
+      responses:
+        '200':
+          description: Action check result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionCheckResponse'
+      security:
+        - bearerAuth: []
+
+components:
+  schemas:
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Success message
+        data:
+          type: object
+          nullable: true
+        errors:
+          type: object
+          nullable: true
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Error message
+        data:
+          type: object
+          nullable: true
+        errors:
+          type: object
+          nullable: true
+    CreateUserRequest:
+      type: object
+      required:
+        - name
+        - email
+        - password
+      properties:
+        name:
+          type: string
+          description: User's name
+        email:
+          type: string
+          format: email
+          description: User's email (valid email format)
+        password:
+          type: string
+          minLength: 8
+          description: User's password (min 8 chars)
+        role:
+          type: string
+          default: PLANNER
+          description: User's role
+        profileImage:
+          type: string
+          description: URL to profile image
+        phone:
+          type: string
+          description: User's phone number
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: User's name
+        email:
+          type: string
+          format: email
+          description: User's email (valid email format)
+        password:
+          type: string
+          minLength: 8
+          description: User's password
+        profileImage:
+          type: string
+          description: URL to profile image
+        phone:
+          type: string
+          description: User's phone number
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [PLANNER, VENDOR, ADMIN]
+        profileImage:
+          type: string
+        phone:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    UserListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Users retrieved successfully
+        data:
+          type: object
+          properties:
+            users:
+              type: array
+              items:
+                $ref: '#/components/schemas/User'
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+        errors:
+          type: object
+          nullable: true
+    GetUserResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: User retrieved successfully
+        data:
+          type: object
+          properties:
+            user:
+              $ref: '#/components/schemas/User'
+        errors:
+          type: object
+          nullable: true
+    CreateEventRequest:
+      type: object
+      required:
+        - name
+        - type
+        - date
+        - location
+        - budget
+      properties:
+        name:
+          type: string
+          description: Event name
+        type:
+          type: string
+          description: Event type
+        date:
+          type: string
+          format: date
+          description: Event date (valid date format)
+        location:
+          type: string
+          description: Event location
+        budget:
+          type: number
+          minimum: 0
+          description: Event budget (positive)
+        guestCount:
+          type: number
+          default: 0
+          description: Number of guests
+        theme:
+          type: string
+          description: Event theme
+        notes:
+          type: string
+          description: Additional notes
+    UpdateEventRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Event name
+        type:
+          type: string
+          description: Event type
+        date:
+          type: string
+          format: date
+          description: Event date (valid date format)
+        location:
+          type: string
+          description: Event location
+        budget:
+          type: number
+          minimum: 0
+          description: Event budget (positive)
+        guestCount:
+          type: number
+          description: Number of guests
+        theme:
+          type: string
+          description: Event theme
+        notes:
+          type: string
+          description: Additional notes
+        status:
+          type: string
+          description: Event status
+    Event:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        date:
+          type: string
+          format: date
+        location:
+          type: string
+        budget:
+          type: number
+        guestCount:
+          type: number
+        theme:
+          type: string
+        notes:
+          type: string
+        status:
+          type: string
+        userId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    EventListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Events retrieved successfully
+        data:
+          type: object
+          properties:
+            events:
+              type: array
+              items:
+                $ref: '#/components/schemas/Event'
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+        errors:
+          type: object
+          nullable: true
+    GetEventResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Event retrieved successfully
+        data:
+          type: object
+          properties:
+            event:
+              $ref: '#/components/schemas/Event'
+        errors:
+          type: object
+          nullable: true
+    CreateVendorRequest:
+      type: object
+      required:
+        - businessName
+        - description
+        - category
+        - pricing
+        - location
+      properties:
+        businessName:
+          type: string
+          description: Business name
+        description:
+          type: string
+          description: Business description
+        category:
+          type: string
+          description: Vendor category
+        pricing:
+          type: number
+          minimum: 0
+          description: Pricing (positive)
+        location:
+          type: string
+          description: Vendor location
+        portfolio:
+          type: array
+          items:
+            type: string
+          description: Portfolio images
+        availability:
+          type: object
+          description: Availability information
+    UpdateVendorRequest:
+      type: object
+      properties:
+        businessName:
+          type: string
+          description: Business name
+        description:
+          type: string
+          description: Business description
+        category:
+          type: string
+          description: Vendor category
+        pricing:
+          type: number
+          minimum: 0
+          description: Pricing (positive)
+        location:
+          type: string
+          description: Vendor location
+        portfolio:
+          type: array
+          items:
+            type: string
+          description: Portfolio images
+        availability:
+          type: object
+          description: Availability information
+        subscriptionTier:
+          type: string
+          description: Subscription tier
+        isVerified:
+          type: boolean
+          description: Verification status
+    Vendor:
+      type: object
+      properties:
+        id:
+          type: string
+        businessName:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        pricing:
+          type: number
+        location:
+          type: string
+        portfolio:
+          type: array
+          items:
+            type: string
+        availability:
+          type: object
+        rating:
+          type: number
+        isVerified:
+          type: boolean
+        subscriptionTier:
+          type: string
+        userId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    VendorListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Vendors retrieved successfully
+        data:
+          type: object
+          properties:
+            vendors:
+              type: array
+              items:
+                $ref: '#/components/schemas/Vendor'
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+        errors:
+          type: object
+          nullable: true
+    GetVendorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Vendor retrieved successfully
+        data:
+          type: object
+          properties:
+            vendor:
+              $ref: '#/components/schemas/Vendor'
+        errors:
+          type: object
+          nullable: true
+    CreateBookingRequest:
+      type: object
+      required:
+        - eventId
+        - vendorId
+        - amount
+      properties:
+        eventId:
+          type: string
+          description: Event ID
+        vendorId:
+          type: string
+          description: Vendor ID
+        amount:
+          type: number
+          minimum: 0
+          description: Booking amount (positive)
+        notes:
+          type: string
+          description: Booking notes
+    UpdateBookingRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          description: Booking status
+        amount:
+          type: number
+          minimum: 0
+          description: Booking amount (positive)
+        notes:
+          type: string
+          description: Booking notes
+        paymentStatus:
+          type: string
+          description: Payment status
+    Booking:
+      type: object
+      properties:
+        id:
+          type: string
+        eventId:
+          type: string
+        vendorId:
+          type: string
+        amount:
+          type: number
+        notes:
+          type: string
+        status:
+          type: string
+        paymentStatus:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    BookingListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Bookings retrieved successfully
+        data:
+          type: object
+          properties:
+            bookings:
+              type: array
+              items:
+                $ref: '#/components/schemas/Booking'
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+        errors:
+          type: object
+          nullable: true
+    GetBookingResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Booking retrieved successfully
+        data:
+          type: object
+          properties:
+            booking:
+              $ref: '#/components/schemas/Booking'
+        errors:
+          type: object
+          nullable: true
+    CreateGuestRequest:
+      type: object
+      required:
+        - eventId
+        - name
+        - email
+        - invitedBy
+      properties:
+        eventId:
+          type: string
+          description: Event ID
+        name:
+          type: string
+          description: Guest name
+        email:
+          type: string
+          format: email
+          description: Guest email (valid email format)
+        dietaryRestrictions:
+          type: string
+          description: Dietary restrictions
+        invitedBy:
+          type: string
+          description: Who invited the guest
+    UpdateGuestRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Guest name
+        email:
+          type: string
+          format: email
+          description: Guest email (valid email format)
+        rsvp:
+          type: string
+          enum: [YES, NO, MAYBE]
+          description: RSVP status
+        dietaryRestrictions:
+          type: string
+          description: Dietary restrictions
+        seatNumber:
+          type: string
+          description: Seat number
+    Guest:
+      type: object
+      properties:
+        id:
+          type: string
+        eventId:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        rsvp:
+          type: string
+          enum: [YES, NO, MAYBE]
+        dietaryRestrictions:
+          type: string
+        seatNumber:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    GuestListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Guests retrieved successfully
+        data:
+          type: object
+          properties:
+            guests:
+              type: array
+              items:
+                $ref: '#/components/schemas/Guest'
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+        errors:
+          type: object
+          nullable: true
+    GetGuestResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Guest retrieved successfully
+        data:
+          type: object
+          properties:
+            guest:
+              $ref: '#/components/schemas/Guest'
+        errors:
+          type: object
+          nullable: true
+    CreateAIRecommendationRequest:
+      type: object
+      properties:
+        generate:
+          type: boolean
+          description: If true, generates recommendations from event
+        eventId:
+          type: string
+          description: Event ID (required if generating)
+        recommendations:
+          type: object
+          description: Recommendations object (required if not generating)
+        feedback:
+          type: string
+          description: Feedback on recommendations
+    UpdateAIRecommendationRequest:
+      type: object
+      properties:
+        recommendations:
+          type: object
+          description: Recommendations object
+        feedback:
+          type: string
+          description: Feedback on recommendations
+    AIRecommendation:
+      type: object
+      properties:
+        id:
+          type: string
+        eventId:
+          type: string
+        recommendations:
+          type: object
+        feedback:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    AIRecommendationListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Recommendations retrieved successfully
+        data:
+          type: object
+          properties:
+            recommendations:
+              type: array
+              items:
+                $ref: '#/components/schemas/AIRecommendation'
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+        errors:
+          type: object
+          nullable: true
+    GetAIRecommendationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Recommendation retrieved successfully
+        data:
+          type: object
+          properties:
+            recommendation:
+              $ref: '#/components/schemas/AIRecommendation'
+        errors:
+          type: object
+          nullable: true
+    CreateModerationReportRequest:
+      type: object
+      required:
+        - reportedUserId
+        - contentId
+        - contentType
+        - reason
+      properties:
+        reportedUserId:
+          type: string
+          description: ID of user being reported
+        contentId:
+          type: string
+          description: ID of content being reported
+        contentType:
+          type: string
+          enum: [message, profile, vendor]
+          description: Type of content being reported
+        reason:
+          type: string
+          description: Reason for report
+    UpdateModerationReportRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [PENDING_REVIEW, IN_REVIEW, RESOLVED]
+          description: Status of the report
+        resolutionNotes:
+          type: string
+          description: Notes about the resolution
+    ModerationReport:
+      type: object
+      properties:
+        id:
+          type: string
+        reportedUserId:
+          type: string
+        contentId:
+          type: string
+        contentType:
+          type: string
+          enum: [message, profile, vendor]
+        reason:
+          type: string
+        status:
+          type: string
+          enum: [PENDING_REVIEW, IN_REVIEW, RESOLVED]
+        resolutionNotes:
+          type: string
+        reportedBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ModerationReportListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Reports retrieved successfully
+        data:
+          type: object
+          properties:
+            reports:
+              type: array
+              items:
+                $ref: '#/components/schemas/ModerationReport'
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+        errors:
+          type: object
+          nullable: true
+    UserRestrictionsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: User restrictions retrieved successfully
+        data:
+          type: object
+          properties:
+            user:
+              type: object
+              properties:
+                id:
+                  type: string
+                restrictions:
+                  type: array
+                  items:
+                    type: string
+                permissions:
+                  type: array
+                  items:
+                    type: string
+                actions:
+                  type: object
+                  additionalProperties:
+                    type: boolean
+        errors:
+          type: object
+          nullable: true
+    ActionCheckRequest:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          enum: [MESSAGE, BOOK, CREATE_EVENT, CREATE_VENDOR_PROFILE]
+          description: Action to check
+    ActionCheckResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Action check result
+        data:
+          type: object
+          properties:
+            canPerform:
+              type: boolean
+        errors:
+          type: object
+          nullable: true
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+  - bearerAuth: []
