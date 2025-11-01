@@ -6,10 +6,10 @@ import { PaymentStatus } from '@prisma/client';
 // GET /api/payments/[id] - Get payment by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     if (!id) {
       return createApiError('Payment ID is required', 400);
@@ -33,10 +33,10 @@ export async function GET(
 // PUT /api/payments/[id] - Update payment by ID
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     if (!id) {
       return createApiError('Payment ID is required', 400);
@@ -46,11 +46,6 @@ export async function PUT(
     const { user } = authResult;
     
     const body = await request.json();
-    
-    // Validate payment status if provided
-    if (body.status && !Object.values(PaymentStatus).includes(body.status)) {
-      return createApiError('Invalid payment status', 400);
-    }
     
     // Validate numeric fields if provided
     if (body.amount !== undefined && (typeof body.amount !== 'number' || body.amount <= 0)) {
@@ -73,10 +68,10 @@ export async function PUT(
 // DELETE /api/payments/[id] - Delete payment by ID (only for pending payments)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     if (!id) {
       return createApiError('Payment ID is required', 400);

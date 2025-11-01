@@ -5,10 +5,10 @@ import { requireAuthApi, createApiResponse, createApiError, handleApiError } fro
 // GET /api/messages/[id] - Get a specific message by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     if (!id) {
       return createApiError('Message ID is required', 400);
@@ -32,10 +32,10 @@ export async function GET(
 // PUT /api/messages/[id] - Update a message (e.g., mark as read)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     if (!id) {
       return createApiError('Message ID is required', 400);
@@ -59,10 +59,10 @@ export async function PUT(
 // DELETE /api/messages/[id] - Delete a message
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     if (!id) {
       return createApiError('Message ID is required', 400);

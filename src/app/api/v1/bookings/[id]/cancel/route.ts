@@ -5,10 +5,10 @@ import { requireAuthApi, createApiResponse, createApiError, handleApiError } fro
 // PUT /api/bookings/[bookingId]/cancel - Cancel booking
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: bookingId } = params;
+    const { id: bookingId } = await params;
     
     if (!bookingId) {
       return createApiError('Booking ID is required', 400);

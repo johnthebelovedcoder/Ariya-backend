@@ -2,13 +2,13 @@ import { NextRequest } from 'next/server';
 import { AdminService } from '@/lib/admin-service';
 import { requireAuthApi, createApiResponse, createApiError, handleApiError } from '@/lib/api-utils';
 
-// PUT /api/admin/vendors/[vendorId]/approve - Approve vendor
+// PUT /api/admin/vendors/[vendorId] - Update vendor status (approve/reject)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { vendorId: string } }
+  { params }: { params: Promise<{ vendorId: string }> }
 ) {
   try {
-    const { vendorId } = params;
+    const { vendorId } = await params;
     
     if (!vendorId) {
       return createApiError('Vendor ID is required', 400);
@@ -26,26 +26,43 @@ export async function PUT(
     // Get body data
     const body = await request.json();
     
-    // Process approval
-    const approvedVendor = await AdminService.approveVendor(
-      vendorId,
-      adminUser.id,
-      body.notes
-    );
+    let updatedVendor;
     
-    return createApiResponse(approvedVendor, 'Vendor approved successfully');
+    if (body.action === 'approve') {
+      // Process approval
+      updatedVendor = await AdminService.approveVendor(
+        vendorId,
+        adminUser.id,
+        body.notes
+      );
+    } else if (body.action === 'reject') {
+      // Process rejection
+      if (!body.reason) {
+        return createApiError('reason is required for vendor rejection', 400);
+      }
+      updatedVendor = await AdminService.rejectVendor(
+        vendorId,
+        adminUser.id,
+        body.reason,
+        body.notes
+      );
+    } else {
+      return createApiError('Invalid action. Use "approve" or "reject".', 400);
+    }
+    
+    return createApiResponse(updatedVendor, 'Vendor status updated successfully');
   } catch (error: any) {
-    return handleApiError(error, 'PUT /api/admin/vendors/[vendorId]/approve');
+    return handleApiError(error, 'PUT /api/admin/vendors/[vendorId]');
   }
 }
 
-// PUT /api/admin/vendors/[vendorId]/reject - Reject vendor
-export async function POST(
+// GET /api/admin/vendors/[vendorId] - Get vendor details
+export async function GET(
   request: NextRequest,
-  { params }: { params: { vendorId: string } }
+  { params }: { params: Promise<{ vendorId: string }> }
 ) {
   try {
-    const { vendorId } = params;
+    const { vendorId } = await params;
     
     if (!vendorId) {
       return createApiError('Vendor ID is required', 400);
@@ -60,23 +77,14 @@ export async function POST(
       return createApiError('Access denied. Admin privileges required.', 403);
     }
     
-    const body = await request.json();
+    const vendor = await AdminService.getVendorById(vendorId);
     
-    // Validate required fields for rejection
-    if (!body.reason) {
-      return createApiError('reason is required for vendor rejection', 400);
+    if (!vendor) {
+      return createApiError('Vendor not found', 404);
     }
     
-    // Process rejection
-    const rejectedVendor = await AdminService.rejectVendor(
-      vendorId,
-      adminUser.id,
-      body.reason,
-      body.notes
-    );
-    
-    return createApiResponse(rejectedVendor, 'Vendor rejected successfully');
+    return createApiResponse(vendor, 'Vendor retrieved successfully');
   } catch (error: any) {
-    return handleApiError(error, 'POST /api/admin/vendors/[vendorId]/reject');
+    return handleApiError(error, 'GET /api/admin/vendors/[vendorId]');
   }
 }

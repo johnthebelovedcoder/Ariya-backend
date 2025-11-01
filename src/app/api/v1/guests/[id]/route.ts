@@ -5,9 +5,9 @@ import { requireAuthApi, createApiResponse, createApiError } from '@/lib/api-uti
 // GET /api/guests/[id] - Get guest by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
   
   if (!id) {
     return createApiError('Guest ID is required', 400);
@@ -38,9 +38,9 @@ export async function GET(
 // PUT /api/guests/[id] - Update guest by ID
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
   
   if (!id) {
     return createApiError('Guest ID is required', 400);
@@ -56,11 +56,6 @@ export async function PUT(
   
   try {
     const body = await request.json();
-    
-    // Validate RSVP status if provided
-    if (body.rsvp && !Object.values(RSVPStatus).includes(body.rsvp)) {
-      return createApiError('Invalid RSVP status', 400);
-    }
     
     const guest = await GuestService.updateGuest(id, user.id, {
       name: body.name,
@@ -97,9 +92,9 @@ export async function PUT(
 // DELETE /api/guests/[id] - Delete guest by ID
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
   
   if (!id) {
     return createApiError('Guest ID is required', 400);

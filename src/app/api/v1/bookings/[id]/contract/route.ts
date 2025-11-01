@@ -1,20 +1,13 @@
 import { NextRequest } from 'next/server';
 import { requireAuthApi, createApiResponse, createApiError, handleApiError } from '@/lib/api-utils';
 
-// Helper to extract booking ID from URL
-function getBookingIdFromUrl(url: string): string | null {
-  // Extract bookingId from URL - pattern: /api/bookings/[bookingId]/contract
-  const match = url.match(/\/api\/bookings\/([^\/\?]+)\/contract/);
-  return match ? match[1] : null;
-}
-
 // GET /api/bookings/[bookingId]/contract - Get booking contract/agreement
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: bookingId } = params;
+    const { id: bookingId } = await params;
     
     if (!bookingId) {
       return createApiError('Booking ID is required', 400);
@@ -135,10 +128,10 @@ export async function GET(
 // POST /api/bookings/[bookingId]/contract - Generate/initiate contract
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: bookingId } = params;
+    const { id: bookingId } = await params;
     
     if (!bookingId) {
       return createApiError('Booking ID is required', 400);

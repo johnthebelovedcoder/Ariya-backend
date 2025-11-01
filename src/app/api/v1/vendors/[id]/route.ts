@@ -5,9 +5,9 @@ import { requireAuthApi, requireRoleAuthApi, createApiResponse, createApiError }
 // GET /api/vendors/[id] - Get vendor by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
   
   if (!id) {
     return createApiError('Vendor ID is required', 400);
@@ -30,9 +30,9 @@ export async function GET(
 // PUT /api/vendors/[id] - Update vendor by ID
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
   
   if (!id) {
     return createApiError('Vendor ID is required', 400);
@@ -101,9 +101,9 @@ export async function PUT(
 // DELETE /api/vendors/[id] - Delete vendor by ID
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
   
   if (!id) {
     return createApiError('Vendor ID is required', 400);

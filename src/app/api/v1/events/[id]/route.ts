@@ -5,9 +5,9 @@ import { requireAuthApi, createApiResponse, createApiError } from '@/lib/api-uti
 // GET /api/events/[id] - Get event by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
   
   if (!id) {
     return createApiError('Event ID is required', 400);
@@ -38,9 +38,9 @@ export async function GET(
 // PUT /api/events/[id] - Update event by ID
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
   
   if (!id) {
     return createApiError('Event ID is required', 400);
@@ -101,9 +101,9 @@ export async function PUT(
 // DELETE /api/events/[id] - Delete event by ID
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
   
   if (!id) {
     return createApiError('Event ID is required', 400);

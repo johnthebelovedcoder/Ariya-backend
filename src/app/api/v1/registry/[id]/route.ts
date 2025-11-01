@@ -5,10 +5,10 @@ import { requireAuthApi, createApiResponse, createApiError, handleApiError } fro
 // GET /api/registry/[id] - Get registry by event ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: eventId } = params;
+    const { id: eventId } = await params;
     
     if (!eventId) {
       return createApiError('Event ID is required', 400);
@@ -32,10 +32,10 @@ export async function GET(
 // PUT /api/registry/[id] - Update registry by event ID
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: eventId } = params;
+    const { id: eventId } = await params;
     
     if (!eventId) {
       return createApiError('Event ID is required', 400);
@@ -65,10 +65,10 @@ export async function PUT(
 // DELETE /api/registry/[id] - Delete registry by event ID
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: eventId } = params;
+    const { id: eventId } = await params;
     
     if (!eventId) {
       return createApiError('Event ID is required', 400);

@@ -2,16 +2,19 @@ import { NextRequest } from 'next/server';
 import { SeatingService } from '@/lib/seating-service';
 import { requireAuthApi, createApiResponse, createApiError, handleApiError } from '@/lib/api-utils';
 
-// GET /api/seating/[id] - Get seating arrangement by event ID
+// GET /api/seating?eventId=... - Get seating arrangement by event ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{}> }
 ) {
   try {
-    const { id: eventId } = params;
+    await params; // Await the params promise
+    
+    const url = new URL(request.url);
+    const eventId = url.searchParams.get('eventId');
     
     if (!eventId) {
-      return createApiError('Event ID is required', 400);
+      return createApiError('Event ID is required as a query parameter', 400);
     }
     
     const authResult = await requireAuthApi();
@@ -25,7 +28,7 @@ export async function GET(
     
     return createApiResponse(seating, 'Seating arrangement retrieved successfully');
   } catch (error: any) {
-    return handleApiError(error, 'GET /api/seating/[id]');
+    return handleApiError(error, 'GET /api/seating');
   }
 }
 
@@ -56,16 +59,19 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT /api/seating/[id] - Update seating arrangement by event ID
+// PUT /api/seating - Update seating arrangement by event ID
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{}> }
 ) {
   try {
-    const { id: eventId } = params;
+    await params; // Await the params promise
+    
+    const url = new URL(request.url);
+    const eventId = url.searchParams.get('eventId');
     
     if (!eventId) {
-      return createApiError('Event ID is required', 400);
+      return createApiError('Event ID is required as a query parameter', 400);
     }
     
     const authResult = await requireAuthApi();
@@ -83,20 +89,23 @@ export async function PUT(
     
     return createApiResponse(seating, 'Seating arrangement updated successfully');
   } catch (error: any) {
-    return handleApiError(error, 'PUT /api/seating/[id]');
+    return handleApiError(error, 'PUT /api/seating');
   }
 }
 
-// DELETE /api/seating/[id] - Delete seating arrangement by event ID
+// DELETE /api/seating - Delete seating arrangement by event ID
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{}> }
 ) {
   try {
-    const { id: eventId } = params;
+    await params; // Await the params promise
+    
+    const url = new URL(request.url);
+    const eventId = url.searchParams.get('eventId');
     
     if (!eventId) {
-      return createApiError('Event ID is required', 400);
+      return createApiError('Event ID is required as a query parameter', 400);
     }
     
     const authResult = await requireAuthApi();
@@ -106,6 +115,6 @@ export async function DELETE(
     
     return createApiResponse(null, 'Seating arrangement deleted successfully');
   } catch (error: any) {
-    return handleApiError(error, 'DELETE /api/seating/[id]');
+    return handleApiError(error, 'DELETE /api/seating');
   }
 }

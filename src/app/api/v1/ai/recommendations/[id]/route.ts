@@ -5,9 +5,9 @@ import { requireAuthApi, createApiResponse, createApiError } from '@/lib/api-uti
 // GET /api/ai/recommendations/[id] - Get AI recommendation by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
   
   if (!id) {
     return createApiError('Recommendation ID is required', 400);
@@ -38,9 +38,9 @@ export async function GET(
 // PUT /api/ai/recommendations/[id] - Update AI recommendation by ID
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
   
   if (!id) {
     return createApiError('Recommendation ID is required', 400);
@@ -81,9 +81,9 @@ export async function PUT(
 // DELETE /api/ai/recommendations/[id] - Delete AI recommendation by ID
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
   
   if (!id) {
     return createApiError('Recommendation ID is required', 400);

@@ -1,16 +1,15 @@
 import { NextRequest } from 'next/server';
 import { UserService } from '@/lib/user-service';
 import { requireAuthApi, requireRoleAuthApi, createApiResponse, createApiError, handleApiError, sanitizeInput } from '@/lib/api-utils';
-import { UserRole } from '@prisma/client';
 import { UpdateUserRequest } from '@/types/api';
 import { validateUpdateUserRequest } from '@/lib/dto-validation';
 
 // GET /api/users/[id] - Get user by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
   
   // Validate user ID format (assuming UUID)
   if (!id || typeof id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
@@ -53,9 +52,9 @@ export async function GET(
 // PUT /api/users/[id] - Update user by ID
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
   
   // Validate user ID format (assuming UUID)
   if (!id || typeof id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
@@ -122,9 +121,9 @@ export async function PUT(
 // DELETE /api/users/[id] - Delete user by ID
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
   
   // Validate user ID format (assuming UUID)
   if (!id || typeof id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {

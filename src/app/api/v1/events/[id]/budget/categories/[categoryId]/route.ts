@@ -2,32 +2,16 @@ import { NextRequest } from 'next/server';
 import { BudgetService } from '@/lib/budget-service';
 import { requireAuthApi, createApiResponse, createApiError, handleApiError } from '@/lib/api-utils';
 
-// Helper to extract IDs from URL
-function getIdsFromUrl(url: string): { eventId: string | null; categoryId: string | null } {
-  // Extract eventId from URL - pattern: /api/events/[eventId]/budget/categories/[categoryId]
-  const eventMatch = url.match(/\/api\/events\/([^\/\?]+)/);
-  const categoryMatch = url.match(/\/api\/events\/[^\/]+\/budget\/categories\/([^\/\?]+)/);
-  
-  return {
-    eventId: eventMatch ? eventMatch[1] : null,
-    categoryId: categoryMatch ? categoryMatch[1] : null
-  };
-}
-
 // PUT /api/events/[eventId]/budget/categories/[categoryId] - Update budget category
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } } // params.id is the eventId
+  { params }: { params: Promise<{ id: string; categoryId: string }> }
 ) {
   try {
-    const { id: eventId } = params; // This is the eventId from /api/events/[id]/budget/...
-    const { eventId: extractedEventId, categoryId } = getIdsFromUrl(request.url);
+    const { id: eventId, categoryId } = await params;
     
-    // Use the extracted event ID if available, otherwise fall back to param
-    const finalEventId = extractedEventId || eventId;
-    
-    if (!finalEventId || !categoryId) {
-      return createApiError('Event ID and Category/Budget ID are required', 400);
+    if (!eventId || !categoryId) {
+      return createApiError('Event ID and Category ID are required', 400);
     }
     
     const authResult = await requireAuthApi();
@@ -42,7 +26,7 @@ export async function PUT(
     }
     
     // Only update if the budget belongs to the correct event
-    if (existingBudget.eventId !== finalEventId) {
+    if (existingBudget.eventId !== eventId) {
       return createApiError('Budget category does not belong to this event', 403);
     }
     
@@ -61,16 +45,13 @@ export async function PUT(
 // DELETE /api/events/[eventId]/budget/categories/[categoryId] - Delete budget category
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string; categoryId: string }> }
 ) {
   try {
-    const { id: eventId } = params;
-    const { eventId: extractedEventId, categoryId } = getIdsFromUrl(request.url);
+    const { id: eventId, categoryId } = await params;
     
-    const finalEventId = extractedEventId || eventId;
-    
-    if (!finalEventId || !categoryId) {
-      return createApiError('Event ID and Category/Budget ID are required', 400);
+    if (!eventId || !categoryId) {
+      return createApiError('Event ID and Category ID are required', 400);
     }
     
     const authResult = await requireAuthApi();
@@ -83,7 +64,7 @@ export async function DELETE(
     }
     
     // Only update if the budget belongs to the correct event
-    if (existingBudget.eventId !== finalEventId) {
+    if (existingBudget.eventId !== eventId) {
       return createApiError('Budget category does not belong to this event', 403);
     }
     

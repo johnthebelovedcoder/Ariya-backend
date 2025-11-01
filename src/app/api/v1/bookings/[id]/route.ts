@@ -5,9 +5,9 @@ import { requireAuthApi, createApiResponse, createApiError } from '@/lib/api-uti
 // GET /api/bookings/[id] - Get booking by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
   
   if (!id) {
     return createApiError('Booking ID is required', 400);
@@ -38,9 +38,9 @@ export async function GET(
 // PUT /api/bookings/[id] - Update booking by ID
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
   
   if (!id) {
     return createApiError('Booking ID is required', 400);
@@ -92,9 +92,9 @@ export async function PUT(
 // DELETE /api/bookings/[id] - Delete booking by ID
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
   
   if (!id) {
     return createApiError('Booking ID is required', 400);

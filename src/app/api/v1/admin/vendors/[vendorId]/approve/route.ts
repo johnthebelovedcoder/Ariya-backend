@@ -5,10 +5,10 @@ import { requireAuthApi, createApiResponse, createApiError, handleApiError } fro
 // PUT /api/admin/vendors/[vendorId]/approve - Approve vendor
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { vendorId: string } }
+  { params }: { params: Promise<{ vendorId: string }> }
 ) {
   try {
-    const { vendorId } = params;
+    const { vendorId } = await params;
     
     if (!vendorId) {
       return createApiError('Vendor ID is required', 400);
