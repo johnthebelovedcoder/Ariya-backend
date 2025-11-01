@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { rateLimiters } from '@/lib/rate-limit';
+import { rateLimit as rateLimiters } from '@/lib/rate-limit';
 import { createApiError } from '@/lib/api-utils';
 import Logger from '@/lib/logger-service';
 
