@@ -28,18 +28,6 @@ const nextConfig = {
       },
     ],
   },
-  typescript: {
-    // Prevent production builds from failing due to type errors during development
-    // In production, ensure types are correct before deployment
-    ignoreBuildErrors: process.env.VERCEL_ENV === 'production' ? false : true,
-  },
-  eslint: {
-    // Allow builds to proceed but ensure proper linting in production
-    ignoreDuringBuilds: process.env.VERCEL_ENV === 'production' ? false : true,
-  },
-  // Enable SWC minification for better performance
-  swcMinify: true,
-  
   // Add redirects if needed
   async redirects() {
     return [
